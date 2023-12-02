@@ -1,8 +1,9 @@
 * Advent of code
 Trying my luck for the first time in the Advent of Code.
 ** Day 1
+https://adventofcode.com/2023/day/1
 *** Task a
-#+begin_src perl :tangle 1a.pl
+#+begin_src perl :tangle 1a.pl :shebang #!/usr/bin/env perl
 #!/usr/bin/env perl
 use v5.36;
 my $tot=0;
@@ -14,7 +15,7 @@ while(<>){
 say $tot;
 #+end_src
 *** Task b
-#+begin_src perl :tangle 1b.pl
+#+begin_src perl :tangle 1b.pl :shebang #!/usr/bin/env perl
 #!/usr/bin/env perl
 use v5.36;
 my $tot=0;
@@ -32,4 +33,50 @@ while(<>){
     $tot += "$digit{$f}$digit{$l}";
 }
 say $tot;
+#+end_src
+** Day 2
+https://adventofcode.com/2023/day/2
+*** Task a
+#+begin_src perl :tangle 2a.pl :shebang #!/usr/bin/env perl
+#!/usr/bin/env perl
+# Sum possible game ids for 12 red cubes, 13 green cubes, and 14 blue cubes
+use v5.36;
+my %available=(red=>12, green=>13, blue=>14);
+my $total=0;
+while(<>){
+    s/Game\s*(\d+):\s*// or die;
+    my $id=$1;
+    my $impossible=0;
+    SUBSET: for(split /\s*;\s*/){
+	for(split /\s*,\s*/){
+	    /^(\d+)\s*(.*)$/  or die;
+	    my ($quantity, $color)=($1, $2);
+	    $impossible=1,last SUBSET if $quantity>$available{$color};
+	}
+    }
+    $total += $id unless $impossible;
+}
+say $total;
+#+end_src
+*** Task b
+#+begin_src perl :tangle 2b.pl :shebang #!/usr/bin/env perl
+#!/usr/bin/env perl
+# Sum minimum powers of games
+use v5.36;
+use List::Util qw(product);
+my $total=0;
+while(<>){
+    s/Game\s*\d+:\s*// or die;
+    my %minima=(red=>0, green=>0, blue=>0);
+    for(split /\s*;\s*/){
+	for(split /\s*,\s*/){
+	    /^(\d+)\s*(.*)$/  or die;
+	    my ($quantity, $color)=($1, $2);
+	    ($_<$quantity) && ($_=$quantity) for $minima{$color};
+	}
+    }
+    my $product=product values %minima;
+    $total += $product;
+}
+say $total;
 #+end_src
