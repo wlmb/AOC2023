@@ -1,5 +1,5 @@
 * Advent of code
-Trying my luck for the first time in the Advent of Code.
+Trying my luck for the first time with the [[https://adventofcode.com/2023/about][Advent of Code]] 2023.
 ** Day 1
 https://adventofcode.com/2023/day/1
 *** Task a
