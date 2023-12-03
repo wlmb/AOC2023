@@ -18,8 +18,8 @@ while(<>){
 say $tot;
 #+end_src
 *** Task b
-#+begin_src perl :tangle 1b.pl :shebang #!/usr/bin/env perl
 Make a regular expression to identify digits and digit names.
+#+begin_src perl :tangle 1b.pl :shebang #!/usr/bin/env perl
 #!/usr/bin/env perl
 use v5.36;
 my $tot=0;
@@ -40,10 +40,10 @@ say $tot;
 #+end_src
 ** Day 2
 https://adventofcode.com/2023/day/2
+*** Task a
 Use regular expressions to obtain game ids. Split to obtain the
 subsets of cubes. Use a regular expression to obtain the number of
 cubes of each color and check if there are enough cubes in the bag.
-*** Task a
 #+begin_src perl :tangle 2a.pl :shebang #!/usr/bin/env perl
 #!/usr/bin/env perl
 # Sum possible game ids for 12 red cubes, 13 green cubes, and 14 blue cubes
