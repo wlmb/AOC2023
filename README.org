@@ -193,3 +193,60 @@ for my $i(1..@schematic-2){
 }
 say $total;
 #+end_src
+** Day 4
+https://adventofcode.com/2023/day/4
+*** Task a
+I use a regular expression to throw away the card numbers and separate
+the winning from the card numbers. I split those numbers on space. I
+make a hash of winning numbers to check against the card numbers and
+find how many matches m I get. If m==0, the score of that card is 0,
+otherwise, it is 2^{m-1}.
+
+#+begin_src perl :tangle 4a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+my $total=0;
+while(<>){
+    chomp;
+    die unless /.*:\s*(.*)\s*\|\s*(.*)\s*/;
+    my @winning=split " ", $1;
+    my @mine=split " ", $2;
+    my %winning;
+    $winning{$_}=1 for @winning;
+    my $matches=0;
+    $winning{$_} && ++$matches for(@mine);
+    my $score=0;
+    $score=1<<($matches-1) if $matches;
+    $total += $score;
+}
+say $total;
+#+end_src
+
+*** Task b
+I use the previous task to obtain how many numbers match the winning
+numbers of each card and save that in an array. I start with one card
+each. For each card number I keep an array of how many cards I have
+and add that many cards to the number of following cards, according to
+the score. I guess the code is clearer than this description.
+#+begin_src perl :tangle 4b.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(sum0);
+my @scores;
+while(<>){
+    chomp;
+    die unless /.*:\s*(.*)\s*\|\s*(.*)\s*/;
+    my @winning=split " ", $1;
+    my @mine=split " ", $2;
+    my %winning;
+    $winning{$_}=1 for @winning;
+    my $matches=0;
+    $winning{$_} && ++$matches for(@mine);
+    push @scores, $matches;
+}
+my @cards=(1) x @scores;
+for(0..@scores-1){
+    my $multiplier=$cards[$_];
+    $cards[$_] += $multiplier for ($_+1..$_+$scores[$_]);
+}
+my $cards=sum0 @cards;
+say $cards;
+#+end_src
