@@ -450,3 +450,240 @@ foreach my ($seed, $seed_nvals)(@seeds){
 }
 say $best_location;
 #+end_src
+** Day 6
+https://adventofcode.com/2023/day/6
+*** Task a
+The distance d travelled is equal to the speed v times the available
+time (t-v), where t is the total time and the held time is equal to
+the speed. Thus, d=vt-v^2. I need d>d_0. Thus, I solve the quadratic
+equation v^2-vt-d_0 = 0, and the held time is bounded by the two
+solutions.
+
+#+begin_src perl :tangle 6a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use POSIX qw(floor ceil);
+chomp(my $times=<>);
+die "Bad times" unless $times=~s/^\s*Time:\s*(.*)\s*$/$1/i;
+my @times=split " ", $times;
+chomp(my $distances=<>);
+die "Bad distances" unless $distances=~s/^\s*Distance:\s*(.*)\s*/$1/i;
+my @distances=split " ", $distances;
+die "Wrong dimensions" unless @times==@distances;
+my $total=1;
+for(0..@times-1){
+    my $t=$times[$_];
+    my $x=$distances[$_];
+    my $s=sqrt($t**2-4*$x);
+    my $v0=ceil(($t-$s)/2);
+    my $v1=floor(($t+$s)/2);
+    my $ways=$v1-$v0+1;
+    $ways-=2 if $s==floor($s);
+    $total*=$ways;
+}
+say $total;
+
+#+end_src
+
+*** Task b
+
+#+begin_src perl :tangle 6b.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use POSIX qw(floor ceil);
+chomp(my $t=<>);
+die "Bad times" unless $t=~s/^\s*Time:\s*(.*)\s*$/$1/i;
+chomp(my $x=<>);
+die "Bad distances" unless $x=~s/^\s*Distance:\s*(.*)\s*/$1/i;
+s/\s+//g for ($t, $x);
+my $s=sqrt($t**2-4*$x);
+my $v0=ceil(($t-$s)/2);
+my $v1=floor(($t+$s)/2);
+my $ways=$v1-$v0+1;
+$ways-=2 if $s==floor($s);
+say $ways;
+
+#+end_src
+
+** Day 7
+https://adventofcode.com/2023/day/7
+*** Task a
+I make an ranked array of card values and of possible games, each
+characterized by an array with ordered card patterns, i.e. [5] (five
+of a kind) [4,1] (four of a kind), [3,2] (full house), etc. I build an
+array of hands. Each and is characterized by its string representation
+and the bid, taken from the input data, the score of the hand
+according to their type and an array of the values of each card. Then,
+I rank all games by sorting on their scores and if necessary on their
+values.
+
+#+begin_src perl :tangle 7a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(all sum0 first);
+my @cards=qw(2 3 4 5 6 7 8 9 T J Q K A);
+my %value;
+$value{$cards[$_]}=$_ for 0..@cards-1;
+my @games=([1,1,1,1,1], [2,1,1,1], [2,2,1], [3,1,1], [3,2], [4,1], [5]);
+my @hands;
+while(<>){
+    chomp;
+    my($hand, $bid)=split " ";
+    my $score=score(card_numbers($hand));
+    my $values=[map {$value{$_}} split "", $hand];
+    push @hands, [$hand, $bid, $score, $values];
+}
+my @sorted=sort {by_hand($a, $b) || by_cards($a, $b)} @hands;
+my $result= sum0 map {($_+1)*$sorted[$_][1]} 0..@sorted-1;
+say $result;
+
+sub by_hand {
+    my $cmp= $a->[2] <=> $b->[2];
+    return $cmp;
+}
+
+sub by_cards {
+    my ($va, $vb)=map {$_->[3]} ($a, $b);
+    my $cmp=first {$_} map {$va->[$_] <=> $vb->[$_]} (0..@$va-1);
+    return $cmp//0;
+}
+
+sub card_numbers($h){
+    my %m;
+    ++$m{$_} for split "", $h;
+    return [sort {$b<=>$a} values %m];
+}
+
+sub score($c){
+    my $nc=@$c;
+    for(0..@games-1){
+	my $g=$games[$_];
+	my $ng=@$g;
+	next unless $ng==$nc;
+	return $_ if all {$g->[$_] eq $c->[$_]} 0..$ng-1;
+    }
+    die "Shouldn't reach";
+}
+#+end_src
+
+*** Task b
+The solution is almost identical, but if a hand has jokers besides
+other cards, the number of jokers is added to the card that is
+repeated the most before scoring.
+
+#+begin_src perl :tangle 7b.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(all sum0 first);
+my @cards=qw(J 2 3 4 5 6 7 8 9 T Q K A);
+my %value;
+$value{$cards[$_]}=$_ for 0..@cards-1;
+my @games=([1,1,1,1,1], [2,1,1,1], [2,2,1], [3,1,1], [3,2], [4,1], [5]);
+my @hands;
+while(<>){
+    chomp;
+    my($hand, $bid)=split " ";
+    my $score=score(card_numbers($hand));
+    my $values=[map {$value{$_}} split "", $hand];
+    push @hands, [$hand, $bid, $score, $values];
+}
+my @sorted=sort {by_hand($a, $b) || by_cards($a, $b)} @hands;
+my $result= sum0 map {($_+1)*$sorted[$_][1]} 0..@sorted-1;
+say $result;
+
+sub by_hand {
+    my $cmp= $a->[2] <=> $b->[2];
+    return $cmp;
+}
+
+sub by_cards {
+    my ($va, $vb)=map {$_->[3]} ($a, $b);
+    my $cmp=first {$_} map {$va->[$_] <=> $vb->[$_]} (0..@$va-1);
+    return $cmp//0;
+}
+
+sub card_numbers($h){
+    my %m;
+    ++$m{$_} for split "", $h;
+    my @sorted=sort {$m{$b}<=>$m{$a}} keys %m;
+    for(0..@sorted-1){
+	if($sorted[$_] eq "J"){
+	    my $add=$m{"J"};
+	    if(@sorted>1){ # if other cards
+		splice @sorted, $_, 1; # add J to others
+		$m{$sorted[0]} += $add;
+	    }
+	    last;
+	}
+    }
+    return [map {$m{$_}} @sorted];
+}
+
+sub score($c){
+    my $nc=@$c;
+    for(0..@games-1){
+	my $g=$games[$_];
+	my $ng=@$g;
+	next unless $ng==$nc;
+	return $_ if all {$g->[$_] eq $c->[$_]} 0..$ng-1;
+    }
+    die "Shouldn't reach";
+}
+#+end_src
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(all sum0);
+my @cards=qw(J 2 3 4 5 6 7 8 9 T Q K A);
+my %value;
+$value{$cards[$_]}=$_ for 0..@cards-1;
+my @games=([1,1,1,1,1], [2,1,1,1], [2,2,1], [3,1,1], [3,2], [4,1], [5]);
+my @hands;
+while(<>){
+    chomp;
+    my($hand, $bid)=split " ";
+    my $score=score(card_numbers($hand));
+    my $values=[map {$value{$_}} split "", $hand;
+    push @hands, [$hand, $bid, $score, $values];
+}
+my @sorted=sort {by_hand($a, $b) || by_cards($a, $b)} @hands;
+my $result= sum0 map {($_+1)*$sorted[$_][1]} 0..@sorted-1;
+say $result;
+
+sub by_hand {
+    my ($sa, $sb)=map {$_->[3]} ($a, $b);
+    my $cmp= $sa <=> $sb;
+    return $cmp;
+}
+
+sub by_cards {
+    my ($va, $vb)=map {$_->[3]} ($a, $b);
+    for(0..@$va-1){
+	my $cmp=$va->[$_] <=> $vb->[$_];
+	return $cmp if $cmp
+    }
+    return 0;
+}
+
+sub card_numbers($h){
+    my %m;
+    ++$m{$_} for split "", $h;
+    my @sorted=sort {$m{$b}<=>$m{$a}} keys %m;
+    for(0..@sorted-1){
+	if($sorted[$_] eq "J"){
+	    my $add=$m{$sorted[$_]};
+	    splice @sorted, $_, 1;
+	    $sorted[0] += $add;
+	    last;
+	}
+    }
+    return [@sorted];
+}
+
+sub score($c){
+    my $nc=@$c;
+    for(0..@games-1){
+	my $g=$games[$_];
+	my $ng=@$g;
+	next unless $ng==$nc;
+	return $_ if all {$g->[$_] eq $c->[$_]} 0..$ng-1;
+    }
+    die "Shouldn't reach";
+}
+#+end_src
+#+end_src
