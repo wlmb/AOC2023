@@ -715,3 +715,68 @@ sub instruction($step){
     $instructions[$step%$num_instructions];
 }
 #+end_src
+
+** Day 9
+https://adventofcode.com/2023/day/9
+*** Task a
+To find an extrapolated value I use a recursive procedure.
+I use the Perl Data Language which has operators to slice arrays,
+operate on all elements of an array, etc. The result is 0 if the array
+is made of zeroes. The result is the last element plus the result of
+extrapolating the array of first differences. The result is a very
+short program.
+
+#+begin_src perl :tangle 9a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use PDL;
+use PDL::NiceSlice;
+my $total=0;
+while(<>){
+    chomp;
+    $total += extrapolate(pdl($_));
+}
+say $total;
+
+sub extrapolate($v){
+    return 0 if ($v==0)->all;
+    return $v->at(-1)+extrapolate($v(1:-1)-$v(0:-2));
+}
+#+end_src
+
+It actually fits a one-liner
+#+begin_src bash :results output
+perl -n -MPDL -MPDL::NiceSlice -E '
+sub e($v){return 0 if ($v==0)->all; $v(-1)+e($v(1:-1)-$v(0:-2))}chomp; $t+=e(pdl($_))}{say $t->at(-1)
+' 9.txt
+#+end_src
+
+Results:
+: 1987402313
+*** Task b
+I believe the code is almost identical. I just subtract from the
+leftmost instead of adding to the rightmost.
+#+begin_src perl :tangle 9b.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use PDL;
+use PDL::NiceSlice;
+my $total=0;
+while(<>){
+    chomp;
+    $total += extrapolate(pdl($_));
+}
+say $total;
+
+sub extrapolate($v){
+    return 0 if ($v==0)->all;
+    return $v->at(0)-extrapolate($v(1:-1)-$v(0:-2));
+}
+#+end_src
+This also fits a oneliner
+#+begin_src bash :results output
+perl -n -MPDL -MPDL::NiceSlice -E '
+sub e($v){return 0 if ($v==0)->all;$v((0))- e($v(1:-1)-$v(0:-2))}chomp;$t+=e(pdl($_))}{say $t->at(0)
+' 9.txt
+#+end_src
+
+#+RESULTS:
+: 900
