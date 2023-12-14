@@ -1030,3 +1030,165 @@ while(my $g=$galaxy_pairs->next){
 }
 say $sum;
 #+end_src
+
+** Day 12
+https://adventofcode.com/2023/day/12
+*** Task a
+After a long time trying different solutions I read a comment by Adam
+Crussel mentioning he saw a solution in Sed. I didn't look at that
+solution, but tried my own with a regular expression. It was really
+simple using the possibility of executing code (incrementing a
+counter) after matching and then forcing failure so that the regular
+expression tries the next match. It took only a few minutes to read
+about code execution within regular expressions and forcing failure. I
+build the regular expression for each line
+
+#+begin_src perl :tangle 12a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use re qw(eval);
+my $count=0;
+while(<>){
+    chomp;
+    my ($condition,$duplicate)=split " ";
+    my @nfails=split ",", $duplicate;
+    my $re="^[.?]*" . join("[.?]+", map {"[?#]{$_}"} @nfails) . '[?.]*$(?{++$count})(*FAIL)';
+    $condition=~/$re/;
+}
+say $count;
+#+end_src
+
+This is the same, but compressed to a two-liner.
+#+begin_src bash :results output
+time perl -Mre=eval -E '
+$c=0;while(<>){chomp;($s,$d)=split " ";@n=split ",", $d;$re="^[.?]*" . join("[.?]+",
+map {"[?#]{$_}"} @n) . "[?.]*\$(?{++\$c})(*FAIL)";$s=~/$re/;}say $c;
+' 12.txt
+#+end_src
+
+Results:
+: 7653
+
+
+*** Task b
+The second task seems relatively trivial. I make the indicated
+replacements and run the code of the previous task.
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+use re qw(eval);
+my $count=0;
+while(<>){
+    chomp;
+    my ($condition,$duplicate)=split " ";
+    $condition=join "?", (("$condition") x 5); # unfold
+    $duplicate=join ",", (("$duplicate") x 5);
+    my @nfails=split ",", $duplicate;
+    my $re="^[.?]*" . join("[.?]+", map {"[?#]{$_}"} @nfails) . '[?.]*$(?{++$count})(*FAIL)';
+    $condition=~/$re/;
+}
+say $count;
+#+end_src
+
+
+However, this takes forever. A simplistic solution would be to solve the first
+problem and raise each row to the fifth power. It doesn't work as the
+joining springs may be failed. Another alternative is to separate the cases
+where all the joining springs work (the fifth power of the previous
+task), where all work except one (the fourth power of the  previous
+task times the result for two records joined by a failing spring)
+multiplied by the four positions for the failed joining spring,
+plus... Not sure if it will be fast enough nor if it's correct. I am
+assuming that when two records are joind by a working spring, there
+are no solutions that cross records.
+
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+use re qw(eval);
+my $count=0;
+my $total;
+while(<>){
+    chomp;
+    say $.;
+    my ($condition,$duplicate)=split " ";
+    my ($c1, $c2, $c3, $c4, $c5)=map {
+	solve((join "#", (("$condition") x $_)),(join ",", (("$duplicate") x $_)));
+    } 1..5;
+    my $subtotal=$c1**5 + 4*$c2*$c1**3 + 3*$c2**2*$c1 + 3*$c3*$c1**2 + 2*$c3*$c2 + 2*$c4*$c1 + $c5;
+    $total += $subtotal;
+}
+say $total;
+
+sub solve($condition, $duplicate){
+    my $count=0;
+    my @nfails=split ",", $duplicate;
+    my $re="^[.?]*" . join("[.?]+", map {"[?#]{$_}"} @nfails) . '[?.]*$(?{++$count})(*FAIL)';
+    $condition=~/$re/;
+    return $count;
+}
+
+#+end_src
+
+This didn't work either. I try now the first approach, but simplifying
+the pattern first, using single '.' as separator. I'm not optimistic.
+
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+use re qw(eval);
+my $count=0;
+while(<>){
+    chomp;
+    my ($condition,$duplicate)=split " ";
+    $condition=join "?", (("$condition") x 5); # unfold
+    $condition.="."; # add guard
+    $condition=~s/\.+/./; # shorten separators
+    $duplicate=join ",", (("$duplicate") x 5);
+    my @nfails=split ",", $duplicate;
+    my $re="^[.?]*" . join("[.?]+", map {"[?#]{$_}"} @nfails) . '[?.]*$(?{++$count})(*FAIL)';
+    $condition=~/$re/;
+    say $.;
+}
+say $count;
+#+end_src
+
+No, it didn't work.
+
+I guess a solution might be to make a regular expression to match the
+first series of damaged springs. On success, recurse for the rest of the
+series and the rest of the records. Then, if the matched string starts
+with a ?, eliminate the starting character and search again for more
+matches. I also memoize the recursive calls to gain speed.
+
+#+begin_src perl :shebang #!/usr/bin/env perl :tangle 12b.pl
+use v5.36;
+use Memoize;
+memoize("howmany");
+my $total=0;
+my $copies=5;
+while(<>){
+    chomp;
+    my ($record,$duplicate)=split " ";
+    $record=join "?", (("$record") x $copies); # unfold
+    $record.="."; # add guard
+    $record=~s/\.+/./; # shorten separators
+    $duplicate=join ",", (("$duplicate") x $copies);
+    my @ndamaged=split ",", $duplicate;
+    my $count=howmany($record, @ndamaged);
+    $total += $count;
+}
+say $total;
+
+sub howmany($record, @ndamaged){
+    my $count=0;
+    return $record=~/#/?0:1 unless @ndamaged;
+    my $damaged=shift @ndamaged;
+    while($record && $record=~s/^[^#]*?([?#]{$damaged}[^#])//){
+	my $matched=$1;
+	my $found = howmany($record, @ndamaged);
+	$count += $found;
+	last if $matched=~/^#/;
+	$matched=~s/^.//; #shorten next record
+	$record=$matched.$record;
+    }
+    return $count;
+}
+
+#+end_src
