@@ -26,7 +26,7 @@ sub howmany($record, @ndamaged){
 	my $found = howmany($record, @ndamaged);
 	$count += $found;
 	last if $matched=~/^#/;
-	$matched=~s/^.//;
+	$matched=~s/^.//; #shorten next record
 	$record=$matched.$record;
     }
     return $count;
