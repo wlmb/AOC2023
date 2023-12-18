@@ -1777,3 +1777,137 @@ sub add($p, $q){
 
 It did work! 4 seconds or so. Maybe not too efficient, but enough for
 this task.
+
+** Day 17
+https://adventofcode.com/2023/day/17
+*** Task a
+I can start at the end and label each possible path with the minimum
+cost to reach the end from it. I setup a queue of blocks that have to
+be inspected. If they have not been considered yet, or if the current
+route is better than the previous routes that have visited that block,
+I update its cost and add its neighbors to the queue. As there is a
+constriction on the paths, I actually have to register the cost for
+each block and each direction. As the number of straight steps is
+bounded, I have to distiguish multiple steps. To that end, I label single
+steps as >, ^, <, v, and repeated steps as >>, >>>, ^, ^^, etc.
+
+#+begin_src perl  :tangle 17a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(min);
+my %steps=(">"=>[1,0], "^"=>[0,-1], "<"=>[-1,0], "v"=>[0,1]);
+my %opposite=(">"=>"<", "^"=>"v", "<"=>">", "v"=>"^");
+my @blocks;
+while(<>){
+    chomp;
+    last if /^$/;
+    push @blocks, [split ""];
+}
+my $height=@blocks;
+my $width=$blocks[0]->@*;
+my @cost;
+my @pending;
+push @pending, [$width, $height-1,">",0], [$width-1, $height,"v",0];
+while(@pending){
+    my ($x, $y, $dir, $cost)=(shift @pending)->@*;
+    my $first=substr $dir,0,1;
+    ($x, $y)=subtract([$x,$y], $steps{$first})->@*;
+    next if $x<0 or $x>=$width or $y<0 or $y>=$height;
+    my $current_cost=$cost[$y][$x];
+    my $visited=defined $current_cost && defined $current_cost->{$dir};
+    my $change=!$visited || $current_cost->{$dir}>$cost;
+    next unless $change; # been here on better path
+    $cost[$y][$x]{$dir}=$cost; # set new cost of path from here to end
+    $cost+=$blocks[$y][$x]; # update cost
+
+    for(keys %steps){
+	my $next_dir = $_;
+	$next_dir .= $dir if $next_dir eq $first; # consecutive steps
+	next if length $next_dir > 3;
+	next if $_ eq $opposite{$first};
+	push @pending, [$x, $y, $next_dir, $cost]
+    }
+}
+my @totals=values $cost[0][0]->%*;
+my $total=min @totals;
+say $total;
+
+sub subtract($p, $q){
+    return [map {$p->[$_]-$q->[$_]} 0..@$p-1];
+}
+
+#+end_src
+
+The code works, but slowly (it took more than 4mins in my laptop).
+
+*** Task b
+
+At first I took the code above and changed the maximum step from >>>
+to >>>>>>>>>>, and so on, and I included a minimum step >>>>. I didn't
+queue turns for blocks arrived with less than the minimum number of
+steps. I noticed that in the first task I made an off by one error
+which could have, but didn't produce a wrong result. The problem is
+that for simplicity I started queuing the blocks beyond the end
+position, so that going backwards I would arrive at the end
+position. However, resulting error is that there are duplicate
+for the last leg of the path. If the last leg is ">>>" ending in the
+final block, I get another one, ">>>>" that ends just beyond. It took
+me awhile to find and correct this mistake. The code is somewhat more
+involved, but it does work. My solution is still slower than that of
+part 1 (around 6mins), but it worked.
+
+#+begin_src perl  :tangle 17b.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(min);
+my $min_length=4;
+my $max_length=10;
+my %steps=(">"=>[1,0], "^"=>[0,-1], "<"=>[-1,0], "v"=>[0,1]);
+my @dirs=sort keys %steps;
+my %opposite=(">"=>"<", "^"=>"v", "<"=>">", "v"=>"^");
+my @blocks;
+while(<>){
+    chomp;
+    last if /^$/;
+    push @blocks, [split ""];
+}
+my $height=@blocks;
+my $width=$blocks[0]->@*;
+my @cost;
+$cost[$height-1][$width-1]={"", 0};
+my @pending;
+push @pending, map{[$width-$_->[0], $height-$_->[1],$_->[2],
+		    $blocks[$height-1][$width-1]]}
+                    ([2,1,">"], [1,2,"v"]);
+while(@pending){
+    my ($x, $y, $dir, $cost)=(shift @pending)->@*;
+    my $first=substr $dir,0,1;
+    next if $x<0 or $x>=$width or $y<0 or $y>=$height;
+    my $current_cost=$cost[$y][$x];
+    my $visited=defined $current_cost && defined $current_cost->{$dir};
+    my $change=!$visited || $current_cost->{$dir}>$cost;
+    next unless $change; # been here on better path
+    $cost[$y][$x]{$dir}=$cost; # set new cost of path from here to end
+    $cost+=$blocks[$y][$x]; # update cost
+
+    for(@dirs){
+	my $next_dir = $_;
+	$next_dir .= $dir if $next_dir eq $first; # consecutive steps
+	next if length $next_dir > $max_length; # don't turn late
+	next if $_ eq $opposite{$first};
+	next if $_ ne $first and length $dir < $min_length; # don't turn early
+	my ($nx,$ny)=subtract([$x,$y], $steps{$_})->@*;
+	push @pending, [$nx, $ny, $next_dir, $cost]
+    }
+}
+my %totals=$cost[0][0]->%*;
+my @totals=map {
+    $totals{$_}
+} grep {length $_ >= $min_length && length $_ <=$max_length}
+keys %totals;
+my $total=min @totals;
+say $total;
+
+sub subtract($p, $q){
+    return [map {$p->[$_]-$q->[$_]} 0..@$p-1];
+}
+
+#+end_src
