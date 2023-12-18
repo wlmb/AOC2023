@@ -20,9 +20,7 @@ my @pending;
 push @pending, map{[$width-$_->[0], $height-$_->[1],$_->[2],
 		    $blocks[$height-1][$width-1]]}
                     ([2,1,">"], [1,2,"v"]);
-my $iterations=0;
 while(@pending){
-    ++$iterations;
     my ($x, $y, $dir, $cost)=(shift @pending)->@*;
     my $first=substr $dir,0,1;
     next if $x<0 or $x>=$width or $y<0 or $y>=$height;
@@ -33,7 +31,6 @@ while(@pending){
     $cost[$y][$x]{$dir}=$cost; # set new cost of path from here to end
     $cost+=$blocks[$y][$x]; # update cost
 
-    #    for(keys %steps){
     for(@dirs){
 	my $next_dir = $_;
 	$next_dir .= $dir if $next_dir eq $first; # consecutive steps
@@ -51,10 +48,6 @@ my @totals=map {
 keys %totals;
 my $total=min @totals;
 say $total;
-#for(keys %totals){
-#    say "$totals{$_} $_";
-#}
-
 
 sub subtract($p, $q){
     return [map {$p->[$_]-$q->[$_]} 0..@$p-1];
