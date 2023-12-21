@@ -77,18 +77,3 @@ sub intersection(@intervals){
     return [$low,$high] if $low<=$high;
     return;
 }
-sub union(@intervals){
-    return unless @intervals;
-    return @intervals if @intervals==1;
-    my @sorted=sort {$a->[0]<=>$b->[0] || $a->[1]<=>$b->[1]} @intervals;
-    my @results;
-    my @result;
-    while(@sorted){
-	my @current=shift @sorted;
-	@result=@current unless @result;
-	push(@results, [@result]), @result=(), next if $result[1]<$current[0];
-	$result[1]=$current[1];
-    }
-    push @results, [@result] if @result;
-    return @results;
-}
