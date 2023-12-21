@@ -2247,9 +2247,25 @@ I made the a trivial modification to the code above, running until rx
 receives a low pulse, but it took forever without finishing. I guess a
 smarter solution consists of determining the period of each module and
 finding the lowest common multiple of the appropriate cycles.
+
+Although I haven't solved the general case, I noticed that
+the last module, rx, only receives signals from one module, qn which
+is a conjunction that only receives signals from modules qz, cq, jx
+and tt. It turns out that thoses modules seem to send a high signal periodically
+with no offset. For example, in my case, qz sends a high signal after the button
+is pressed 3911, 7822, 11733, 15644... times, i.e., each 3911 times
+counting from zero. Similarly for the other modules:
+| qz | 3911 |
+| cq | 4021 |
+| jx | 3907 |
+| tt | 3931 |
+Thus, the result is the least common multiplier
+241,528,477,694,627. The program that computes this number follows
+
 #+begin_src perl  :tangle 20b.pl :shebang #!/usr/bin/env perl
 use v5.36;
 use List::Util qw(all);
+use Math::Prime::Util qw(lcm);
 my %modules; #name=>[kind=>..., state=>..., dests=>[...], from=>[...]
 my %processors=(""=>\&broadcast, "%"=>\&flipflop, "&"=>\&conjunction, "END"=>\&end);
 my %negate_pulse=qw(low high high low);
@@ -2269,6 +2285,11 @@ for(keys %modules){ # initialize
        if $module->{kind} eq "&";
 }
 my $count=0;
+my $lasatlast="rx";
+my $last=$modules{rx}->{from}[0];               # qn
+my @penultimate=$modules{$last}{from}->@*; 	#/qz|cq|jx|tt/
+
+my %periods;
 my @queue;
 my @nextqueue;
 COUNT: while(1){
@@ -2276,11 +2297,14 @@ COUNT: while(1){
     ++$count;
     while(@queue){
 	my $next=shift @queue;
-	last COUNT if $next->[2] eq "rx" && $next->[1] eq "low";
+	do {$periods{$_}=$count if $next->[0] eq $_ && $next->[2] eq "qn"
+	    && $next->[1] eq "high" && !defined $periods{$_}} for @penultimate;
+	last COUNT if all {defined $periods{$_}} @penultimate;
 	dispatch($next);
     }
 }
-say $count;
+say "$_ $periods{$_}" for @penultimate;
+say "Result: ", lcm(map {$periods{$_}} @penultimate);
 
 sub create($name, $kind, $dests, $processor){
     $modules{$name}//={};
@@ -2320,3 +2344,5 @@ sub end($from, $pulse, $self){
 
 
 #+end_src
+
+#+RESULTS:
