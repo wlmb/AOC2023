@@ -2,7 +2,6 @@
 use v5.36;
 use PDL;
 use List::Util qw(sum0);
-use bigint;
 my @dirs=map {pdl $_} ([0,1],[1,0],[-1,0],[0,-1]);
 my $start;
 my $N=64;
