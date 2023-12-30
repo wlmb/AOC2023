@@ -10,7 +10,7 @@ my @supported_by;
 while(<>){ # read
     chomp;
     my ($first, $last)=map {pdl($_)} split "~";
-    die "Bad ordere" unless ($last>=$first)->all;
+    die "Bad order" unless ($last>=$first)->all;
     push @bricks, pdl($first, $last);
 }
 @bricks=sort {$a->slice([2,0,0],[0,0,0]) <=> $b->slice([2,0,0],[0,0,0])
