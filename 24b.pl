@@ -51,4 +51,5 @@ while(1){  # Newton's iteration
     $t=$t+$deltat;
     last if(($deltaR->abs<$err)->all);
 }
+
 say $R->sum;

@@ -3108,7 +3108,8 @@ and solving for ~δR~, ~δV~ and ~δt~. I could use all the equations and
 use SVD to obtain the best solution, or use a few equations (say, the
 9 equations corresponding to the first three hailstones) and hope
 that their solution solves the whole system. I use PDL magic to build
-the required matrices.
+the required matrices. I should have checked that the result holds for
+all hailstones. I'll do it later, but I want to finish this year.
 
 #+begin_src perl  :tangle 24b.pl :shebang #!/usr/bin/env perl
 use v5.36;
@@ -3167,3 +3168,76 @@ while(1){  # Newton's iteration
 say $R->sum;
 
 #+end_src
+
+** Day 25
+https://adventofcode.com/2023/day/25
+*** Task a
+In my first solution I cheated. I made a small program to output the
+graph in a format that can be fed to neatdo (GrahViz) to plot the
+graph.
+
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+my %connections;
+while(<>){
+    chomp;
+    last if /^\s*$/;
+    my @components=split /:?\s+/;
+    my $first=shift @components;
+    push $connections{$first}->@*, $_  for @components;
+#    push $connections{$_}->@*, $first for @components;
+}
+say "graph Jaja {";
+for my $k (keys %connections){
+    say "$k -- $_;" for $connections{$k}->@*;
+}
+say "}";
+
+
+#+end_src
+
+Then I ran neato, saw the graph and identified the links to remove. In
+my case: mhb-zqg, zjr-jlt and fjn-mzb. Then I can follow links from
+say mhb and from zqg to obtain how many nodes are in each group.
+
+#+begin_src perl  :tangle 25a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+my @deleted=qw(mhb zqg sjr jlt fjn mzb);
+#my @deleted=qw(hfx pzl bvb cmg nvd jqt);
+my %deleted=(@deleted, reverse @deleted);
+my %connections;
+while(<>){
+    chomp;
+    last if /^\s*$/;
+    my @components=split /:?\s+/;
+    my $first=shift @components;
+    for(@components){
+	next if defined $deleted{$first} and $deleted{$first} eq $_ ;
+	push $connections{$first}->@*, $_;
+	push $connections{$_}->@*, $first;
+    }
+ }
+my $group1=$deleted[0];
+my $group2=$deleted[1];
+my @counts;
+for($group1, $group2){
+    my %visited;
+    my @pending;
+    push @pending, $_;
+    my $count=0;
+    while(@pending){
+	my $current=shift @pending;
+	next if $visited{$current};
+	++$count;
+	$visited{$current}=1;
+	#$visited{$_} || push @pending, $_ for $connections{$current}->@*;
+	push @pending, $_ for $connections{$current}->@*;
+    }
+    push @counts, $count;
+}
+say $counts[0]*$counts[1];
+
+#+end_src
+
+
+*** Task b
