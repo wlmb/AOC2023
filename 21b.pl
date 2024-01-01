@@ -2,9 +2,9 @@
 use v5.36;
 use PDL;
 use PDL::NiceSlice;
-die unless @ARGV==2;
-my $M=shift;
-#my $M=26501365;
+#die unless @ARGV==2;
+#my $M=shift;
+my $M=26501365;
 my @dirs=map {pdl $_} ([0,1],[1,0],[-1,0],[0,-1]);
 my $start;
 my $map;
