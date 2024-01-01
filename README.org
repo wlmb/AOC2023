@@ -3200,7 +3200,7 @@ Then I ran neato, saw the graph and identified the links to remove. In
 my case: mhb-zqg, zjr-jlt and fjn-mzb. Then I can follow links from
 say mhb and from zqg to obtain how many nodes are in each group.
 
-#+begin_src perl  :tangle 25a.pl :shebang #!/usr/bin/env perl
+#+begin_src perl :shebang #!/usr/bin/env perl
 use v5.36;
 my @deleted=qw(mhb zqg sjr jlt fjn mzb);
 #my @deleted=qw(hfx pzl bvb cmg nvd jqt);
@@ -3239,5 +3239,215 @@ say $counts[0]*$counts[1];
 
 #+end_src
 
+I guess I can identify the links to remove by solving an electricity
+problem. First I find two nodes far apart. I apply a fixed voltage
+between them. Strogly connected groups will be almost equipotential,
+so that most of the potential fall will occur across the links I'm
+searching for. I solve the discrete Laplace's equation between nodes
+by using a relaxation method: the potential at each node should be the
+average of the potential at nearby nodes.
 
-*** Task b
+#+begin_src perl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(sum0);
+die "Usage. $0 N file to relax N times" unless @ARGV==2;
+my $Nrelax=shift;
+my %connections;
+while(<>){
+    chomp;
+    last if /^\s*$/;
+    my @components=split /:?\s+/;
+    my $first=shift @components;
+    for(@components){
+	push $connections{$first}->@*, $_;
+	push $connections{$_}->@*, $first;
+    }
+}
+my ($first, $last, $nodes)=search_diameter();
+my %voltage;
+my @nodes=@$nodes; # ordered from first to last
+$voltage{$_}=0 for @nodes;
+$voltage{$first}=1;
+$voltage{$last}=-1;
+relax() for (1..$Nrelax);
+my %edges;
+do {my $f=$_;do {my @s=sort($f, $_); $edges{"@s"}=abs($voltage{$f}-$voltage{$_})}
+		 for $connections{$f}->@*} for @nodes;
+my @edges=sort {$edges{$b} <=> $edges{$a}} keys %edges;
+say "$_ $edges[$_] $edges{$edges[$_]}" for 0..10;
+
+sub relax(){
+    my $voltage1;
+    $voltage{$_}=sum0 (map {$voltage{$_}} $connections{$_}->@*)/$connections{$_}->@* for @nodes;
+    $voltage{$last}=-1;
+    $voltage{$_}=sum0(map {$voltage{$_}} $connections{$_}->@*)/$connections{$_}->@* for reverse @nodes;
+    $voltage{$first}=1;
+}
+
+sub search_diameter(){
+    my $start0=(keys %connections)[0]; #arbitrary starting site
+    my $start=antipode($start0);
+    my ($end, $nodes)=antipode($start);
+    return ($start, $end, $nodes);
+}
+sub antipode($start){
+    my @pending;
+    my %visited;
+    push @pending, $start;
+    my $last;
+    my @nodes;
+    while(@pending){ # search farthest from $start0 breath first search
+	my $current=shift @pending;
+	next if $visited{$current};
+	$visited{$current}=1;
+	push @nodes, $current;
+	$last=$current;
+	push @pending, $connections{$current}->@*;
+    }
+    return wantarray? ($last, [@nodes]):$last;
+}
+
+__END__
+
+my $group1=$deleted[0];
+my $group2=$deleted[1];
+my @counts;
+for($group1, $group2){
+    my %visited;
+    my @pending;
+    push @pending, $_;
+    my $count=0;
+    while(@pending){
+	my $current=shift @pending;
+	next if $visited{$current};
+	++$count;
+	$visited{$current}=1;
+	#$visited{$_} || push @pending, $_ for $connections{$current}->@*;
+	push @pending, $_ for $connections{$current}->@*;
+    }
+    push @counts, $count;
+}
+say $counts[0]*$counts[1];
+
+#+end_src
+
+Results:
+|  0 | ppj | qsh |     1.00001205674114 |
+|  1 | ppj | scp |     1.00001173408653 |
+|  2 | ppj | tvj |     1.00001093432351 |
+|  3 | dbm | ppj |     1.00001075522171 |
+|  4 | klk | ppj |     1.00001037544407 |
+|  5 | jlt | sjr | 0.000782775566525047 |
+|  6 | fjn | mzb | 0.000755686036701646 |
+|  7 | mhb | zqg | 0.000742327460352831 |
+|  8 | kgf | zqg | 0.000267456705110494 |
+|  9 | fjn | mxf | 0.000255129291223601 |
+| 10 | fjn | thc | 0.000251519695232623 |
+
+It more or less worked. It found the required links within the first
+seven results with just a few relaxation cycles (10). So it is not a
+very good solution, but I can try all
+sets of three links from the top of the results above until I find a set that
+disconnects the circuit into two groups.
+
+#+begin_src perl  :tangle 25a.pl :shebang #!/usr/bin/env perl
+use v5.36;
+use List::Util qw(sum0);
+
+die "Usage. $0 N file to relax N times" unless @ARGV==2;
+my $Nrelax=shift;
+my %connections;
+while(<>){
+    chomp;
+    last if /^\s*$/;
+    my @components=split /:?\s+/;
+    my $first=shift @components;
+    for(@components){
+	push $connections{$first}->@*, $_;
+	push $connections{$_}->@*, $first;
+    }
+}
+my ($first, $last, $nodes)=search_diameter();
+my %voltage;
+my @nodes=@$nodes; # ordered from first to last
+$voltage{$_}=0 for @nodes;
+$voltage{$first}=1;
+$voltage{$last}=-1;
+relax() for (1..$Nrelax);
+my %edges;
+do {my $f=$_;do {my @s=sort($f, $_); $edges{"@s"}=abs($voltage{$f}-$voltage{$_})}
+		 for $connections{$f}->@*} for @nodes;
+my @edges=sort {$edges{$b} <=> $edges{$a}} keys %edges;
+# test triads of edges until graph disconnects
+my $Nedges=@edges;
+my ($i, $j, $k)=(0,1,2);
+while($k<$Nedges){
+    last if disconnect(map {$edges[$_]} ($i, $j, $k));
+    ++$i, next if $i+1<$j;
+    ++$j, $i=0, next if $j+1<$k;
+    ++$k, $i=0, $j=1;
+}
+
+sub relax(){
+    my $voltage1;
+    $voltage{$_}=sum0 (map {$voltage{$_}} $connections{$_}->@*)/$connections{$_}->@* for @nodes;
+    $voltage{$last}=-1;
+    $voltage{$_}=sum0(map {$voltage{$_}} $connections{$_}->@*)/$connections{$_}->@* for reverse @nodes;
+    $voltage{$first}=1;
+}
+
+sub search_diameter(){
+    my $start0=(keys %connections)[0]; #arbitrary starting site
+    my $start=antipode($start0);
+    my ($end, $nodes)=antipode($start);
+    return ($start, $end, $nodes);
+}
+sub antipode($start){
+    my @pending;
+    my %visited;
+    push @pending, $start;
+    my $last;
+    my @nodes;
+    while(@pending){ # search farthest from $start0 breath first search
+	my $current=shift @pending;
+	next if $visited{$current};
+	$visited{$current}=1;
+	push @nodes, $current;
+	$last=$current;
+	push @pending, $connections{$current}->@*;
+    }
+    return wantarray? ($last, [@nodes]):$last;
+}
+
+sub disconnect($p, $q, $r){
+    # try to disconnect graph by removing edges $p, $q and $r
+    my @deleted=map {split " "} ($p, $q, $r);
+    my %deleted=(@deleted, reverse @deleted);
+    my $group1=$deleted[0];
+    my $group2=$deleted[1];
+    my @counts;
+    for($group1, $group2){
+	my %visited;
+	my @pending;
+	push @pending, $_;
+	my $count=0;
+	while(@pending){
+	    my $current=shift @pending;
+	    next if $visited{$current};
+	    ++$count;
+	    $visited{$current}=1;
+	    #$visited{$_} || push @pending, $_ for $connections{$current}->@*;
+	    push @pending, $_
+		for grep {!($deleted{$current} && $deleted{$_})} $connections{$current}->@*;
+	}
+	return 0 if $count==@nodes; # didn't split
+	push @counts, $count;
+    }
+    say "$p $q $r ", $counts[0]*$counts[1];
+}
+#+end_src
+
+It worked! There must be a more robust algorithm, but this was not so
+bad and it was reasonably fast.
+
+Done for the holidays!
