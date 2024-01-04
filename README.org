@@ -3307,28 +3307,6 @@ sub antipode($start){
     return wantarray? ($last, [@nodes]):$last;
 }
 
-__END__
-
-my $group1=$deleted[0];
-my $group2=$deleted[1];
-my @counts;
-for($group1, $group2){
-    my %visited;
-    my @pending;
-    push @pending, $_;
-    my $count=0;
-    while(@pending){
-	my $current=shift @pending;
-	next if $visited{$current};
-	++$count;
-	$visited{$current}=1;
-	#$visited{$_} || push @pending, $_ for $connections{$current}->@*;
-	push @pending, $_ for $connections{$current}->@*;
-    }
-    push @counts, $count;
-}
-say $counts[0]*$counts[1];
-
 #+end_src
 
 Results:
